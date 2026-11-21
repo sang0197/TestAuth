@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using TestAuth2.Attributes;
+using TestAuth2.Constants;
 using TestAuth2.Data;
 using TestAuth2.DTOs.Auth;
 
@@ -40,6 +42,11 @@ namespace TestAuth2.Controllers
                     Email = u.Email,
                     Roles = u.UserRoles
                         .Select(ur => ur.Role.Name)
+                        .ToList(),
+                    Permissions = u.UserRoles
+                        .SelectMany(ur => ur.Role.RolePermissions)
+                        .Select(rp => rp.Permission.Name)
+                        .Distinct()
                         .ToList()
                 })
                 .FirstOrDefaultAsync();
@@ -53,7 +60,7 @@ namespace TestAuth2.Controllers
         }
 
         [HttpGet("admin")]
-        [Authorize(Roles = "Admin")]
+        [Permission(Permissions.User.Role1)]
         public IActionResult AdminOnly()
         {
             return Ok(new
@@ -63,7 +70,7 @@ namespace TestAuth2.Controllers
         }
 
         [HttpGet("user-area")]
-        [Authorize(Roles = "User")]
+        [Permission(Permissions.User.Role2)]
         public IActionResult UserArea()
         {
             return Ok(new
@@ -73,7 +80,7 @@ namespace TestAuth2.Controllers
         }
 
         [HttpGet("admin-or-user")]
-        [Authorize(Roles = "Admin,User")]
+        [Permission(Permissions.User.Role3)]
         public IActionResult AdminOrUser()
         {
             return Ok(new

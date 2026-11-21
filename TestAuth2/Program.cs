@@ -1,10 +1,12 @@
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using TestAuth2.Authorization;
 using TestAuth2.Data;
 using TestAuth2.Entities;
 using TestAuth2.Services;
@@ -79,7 +81,31 @@ namespace TestAuth2
                 });
             #endregion
 
-            builder.Services.AddAuthorization();
+            builder.Services.AddSingleton<
+                IAuthorizationHandler,
+                PermissionAuthorizationHandler>();
+            builder.Services.AddSingleton<
+                IAuthorizationPolicyProvider,
+                PermissionPolicyProvider>();
+            builder.Services.AddAuthorization(//options =>
+            //{
+            //    options.AddPolicy(
+            //        "user.role1",
+            //        policy =>
+            //        {
+            //            policy.Requirements.Add(
+            //                new PermissionRequirement("user.role1"));
+            //        });
+
+            //    options.AddPolicy(
+            //        "user.role2",
+            //        policy =>
+            //        {
+            //            policy.Requirements.Add(
+            //                new PermissionRequirement("user.role2"));
+            //        });
+            //}
+            );
 
             var app = builder.Build();
 

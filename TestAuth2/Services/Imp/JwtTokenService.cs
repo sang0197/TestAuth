@@ -40,8 +40,10 @@ namespace TestAuth2.Services.Imp
         };
 
             claims.AddRange(
-                user.UserRoles.Select(ur =>
-                    new Claim(ClaimTypes.Role, ur.Role.Name)));
+                user.UserRoles
+                    .SelectMany(ur => ur.Role.RolePermissions)
+                    .Select(rp =>
+                        new Claim("permission", rp.Permission.Name)));
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(secretKey));

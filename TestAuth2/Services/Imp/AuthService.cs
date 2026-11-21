@@ -80,6 +80,8 @@ namespace TestAuth2.Services
             var user = await _dbContext.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
+                    .ThenInclude(rp => rp.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
                 .FirstOrDefaultAsync(u =>
                     u.Username == login || u.Email == login);
 

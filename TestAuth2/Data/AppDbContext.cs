@@ -15,6 +15,8 @@ namespace TestAuth2.Data
         public DbSet<Role> Roles => Set<Role>();
 
         public DbSet<UserRole> UserRoles => Set<UserRole>();
+        public DbSet<Permission> Permissions => Set<Permission>();
+        public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -65,6 +67,35 @@ namespace TestAuth2.Data
                 entity.HasOne(ur => ur.Role)
                     .WithMany(r => r.UserRoles)
                     .HasForeignKey(ur => ur.RoleId);
+            });
+
+            modelBuilder.Entity<Permission>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.Name)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.Name)
+                    .IsUnique();
+            });
+
+            modelBuilder.Entity<RolePermission>(entity =>
+            {
+                entity.HasKey(x => new
+                {
+                    x.RoleId,
+                    x.PermissionId
+                });
+
+                entity.HasOne(x => x.Role)
+                    .WithMany(x => x.RolePermissions)
+                    .HasForeignKey(x => x.RoleId);
+
+                entity.HasOne(x => x.Permission)
+                    .WithMany(x => x.RolePermissions)
+                    .HasForeignKey(x => x.PermissionId);
             });
         }
     }
