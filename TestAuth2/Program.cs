@@ -109,32 +109,13 @@ namespace TestAuth2
 
             var app = builder.Build();
 
-            #region Seed Roles
-            // Seed roles if they do not exist
-            await using (var scope = app.Services.CreateAsyncScope())
+            #region Data Seeder
+            using (var scope = app.Services.CreateScope())
             {
-                var dbContext = scope.ServiceProvider
+                var db = scope.ServiceProvider
                     .GetRequiredService<AppDbContext>();
 
-                await dbContext.Database.MigrateAsync();
-
-                var requiredRoles = new[] { "Admin", "User" };
-
-                foreach (var roleName in requiredRoles)
-                {
-                    var exists = await dbContext.Roles
-                        .AnyAsync(r => r.Name == roleName);
-
-                    if (!exists)
-                    {
-                        dbContext.Roles.Add(new Role
-                        {
-                            Name = roleName
-                        });
-                    }
-                }
-
-                await dbContext.SaveChangesAsync();
+                await DbSeeder.SeedAsync(db);
             }
             #endregion
 
