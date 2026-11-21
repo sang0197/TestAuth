@@ -46,6 +46,44 @@ namespace TestAuth2.Migrations
                     b.ToTable("Permissions");
                 });
 
+            modelBuilder.Entity("TestAuth2.Entities.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("TestAuth2.Entities.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -136,6 +174,17 @@ namespace TestAuth2.Migrations
                     b.ToTable("UserRoles");
                 });
 
+            modelBuilder.Entity("TestAuth2.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("TestAuth2.Entities.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TestAuth2.Entities.RolePermission", b =>
                 {
                     b.HasOne("TestAuth2.Entities.Permission", "Permission")
@@ -188,6 +237,8 @@ namespace TestAuth2.Migrations
 
             modelBuilder.Entity("TestAuth2.Entities.User", b =>
                 {
+                    b.Navigation("RefreshTokens");
+
                     b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618

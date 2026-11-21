@@ -9,17 +9,20 @@ namespace TestAuth2.Services
     public class AuthService : IAuthService
     {
         private readonly AppDbContext _dbContext;
-        private readonly IJwtTokenService _jwtTokenService;
+        private readonly IJwtTokenService _jwtTokenService; 
         private readonly IPasswordHasher<User> _passwordHasher;
+        private readonly IRefreshTokenService _refreshTokenService;
 
         public AuthService(
             AppDbContext dbContext,
             IJwtTokenService jwtTokenService,
-            IPasswordHasher<User> passwordHasher)
+            IPasswordHasher<User> passwordHasher,
+            IRefreshTokenService refreshTokenService)
         {
             _dbContext = dbContext;
             _jwtTokenService = jwtTokenService;
             _passwordHasher = passwordHasher;
+            _refreshTokenService = refreshTokenService;
         }
 
         public async Task<bool> RegisterAsync(RegisterRequest request)
@@ -110,12 +113,109 @@ namespace TestAuth2.Services
             var (token, expiresAtUtc) =
                 _jwtTokenService.GenerateToken(user);
 
+            var refreshToken = _refreshTokenService.GenerateToken();
+            var refreshTokenHash = _refreshTokenService.HashToken(refreshToken);
+            var refreshTokenEntity = new RefreshToken
+            {
+                TokenHash = refreshTokenHash,
+                UserId = user.Id,
+                ExpiresAt = DateTime.UtcNow.AddDays(
+                    _jwtTokenService.GetRefreshTokenExpirationDays())
+            };
+
+            _dbContext.RefreshTokens.Add(refreshTokenEntity);
+            await _dbContext.SaveChangesAsync();
+
             return new AuthResponse
             {
                 AccessToken = token,
                 TokenType = "Bearer",
-                ExpiresAtUtc = expiresAtUtc
+                ExpiresAtUtc = expiresAtUtc,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt
             };
+        }
+
+        public async Task<AuthResponse?> RefreshAsync(string refreshToken)
+        {
+            var refreshTokenHash = _refreshTokenService.HashToken(refreshToken);
+            var refreshTokenEntity = await _dbContext.RefreshTokens
+                .Include(rt => rt.User)
+                    .ThenInclude(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .ThenInclude(rp => rp.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
+                .FirstOrDefaultAsync(rt =>
+                    rt.TokenHash == refreshTokenHash);
+            if (refreshTokenEntity is null ||
+                !refreshTokenEntity.IsActive ||
+                !refreshTokenEntity.User.IsActive)
+            {
+                return null;
+            }
+
+            // Generate a new access token and refresh token
+            var user = refreshTokenEntity.User;
+            var (newAccessToken, newAccessTokenExpiresAt) =
+                _jwtTokenService.GenerateToken(user);
+            var newRefreshToken = _refreshTokenService.GenerateToken();
+            var newRefreshTokenHash = _refreshTokenService.HashToken(newRefreshToken);
+            var newRefreshTokenEntity = new RefreshToken
+            {
+                TokenHash = newRefreshTokenHash,
+                UserId = user.Id,
+                ExpiresAt = DateTime.UtcNow.AddDays(
+                    _jwtTokenService.GetRefreshTokenExpirationDays())
+            };
+
+            // Revoke the old refresh token
+            refreshTokenEntity.RevokedAt = DateTime.UtcNow;
+            refreshTokenEntity.ReplacedByTokenHash = newRefreshTokenHash;
+            _dbContext.RefreshTokens.Add(newRefreshTokenEntity);
+            await _dbContext.SaveChangesAsync();
+            return new AuthResponse
+            {
+                AccessToken = newAccessToken,
+                TokenType = "Bearer",
+                ExpiresAtUtc = newAccessTokenExpiresAt,
+                RefreshToken = newRefreshToken,
+                RefreshTokenExpiresAt = newRefreshTokenEntity.ExpiresAt
+            };
+        }
+
+        public async Task LogoutAsync(string refreshToken)
+        {
+            var tokenHash = _refreshTokenService.HashToken(refreshToken);
+
+            var storedToken = await _dbContext.RefreshTokens
+                    .FirstOrDefaultAsync(x => x.TokenHash == tokenHash);
+
+            if (storedToken == null || storedToken.RevokedAt.HasValue)
+            {
+                return;
+            }
+
+            storedToken.RevokedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task LogoutAllAsync(int userId)
+        {
+            var tokens =
+                await _dbContext.RefreshTokens
+                    .Where(x =>
+                        x.UserId == userId &&
+                        x.RevokedAt == null)
+                    .ToListAsync();
+
+            foreach (var token in tokens)
+            {
+                token.RevokedAt =
+                    DateTime.UtcNow;
+            }
+
+            await _dbContext.SaveChangesAsync();
         }
     }
 }

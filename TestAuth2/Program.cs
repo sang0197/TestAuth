@@ -34,6 +34,7 @@ namespace TestAuth2
 
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+            builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
             #region Jwt Authentication Configuration
             var secretKey = builder.Configuration["Jwt:SecretKey"]

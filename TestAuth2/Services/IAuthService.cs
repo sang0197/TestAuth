@@ -7,5 +7,11 @@ namespace TestAuth2.Services
         Task<AuthResponse?> LoginAsync(LoginRequest request);
 
         Task<bool> RegisterAsync(RegisterRequest request);
+
+        Task<AuthResponse?> RefreshAsync(string refreshToken);
+
+        Task LogoutAsync(string refreshToken);
+
+        Task LogoutAllAsync(int userId);
     }
 }

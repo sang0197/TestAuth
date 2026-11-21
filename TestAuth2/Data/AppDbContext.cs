@@ -17,6 +17,7 @@ namespace TestAuth2.Data
         public DbSet<UserRole> UserRoles => Set<UserRole>();
         public DbSet<Permission> Permissions => Set<Permission>();
         public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -96,6 +97,23 @@ namespace TestAuth2.Data
                 entity.HasOne(x => x.Permission)
                     .WithMany(x => x.RolePermissions)
                     .HasForeignKey(x => x.PermissionId);
+            });
+
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.TokenHash)
+                    .HasMaxLength(128)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.TokenHash)
+                    .IsUnique();
+
+                entity.HasOne(x => x.User)
+                    .WithMany(x => x.RefreshTokens)
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

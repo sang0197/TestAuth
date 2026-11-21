@@ -65,5 +65,17 @@ namespace TestAuth2.Services.Imp
 
             return (serializedToken, expiresAtUtc);
         }
+
+        public int GetRefreshTokenExpirationDays()
+        {
+            var expirationDays = _configuration["RefreshToken:ExpirationDays"];
+            if (string.IsNullOrWhiteSpace(expirationDays) ||
+                !int.TryParse(expirationDays, out int days))
+            {
+                throw new InvalidOperationException(
+                    "Refresh token expiration days is not configured properly.");
+            }
+            return days;
+        }
     }
 }
